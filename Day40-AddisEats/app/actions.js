@@ -1,0 +1,8 @@
+"use server";
+import {revalidatePath} from "next/cache";
+import {orderSchema} from "@/lib/schema";
+import {createOrder,findOrder,removeOrder} from "@/lib/orders";
+import {getSessionUser} from "@/lib/session";
+import {getDish} from "@/lib/dishes";
+export async function placeOrder(previousState,formData){const user=await getSessionUser();if(!user)return {success:false,message:"Start a demo session before ordering.",fieldErrors:{}};let items;try{items=JSON.parse(String(formData.get("items")||"[]"));}catch{return {success:false,message:"Invalid cart data.",fieldErrors:{}};}const result=orderSchema.safeParse({customerName:formData.get("customerName"),phone:formData.get("phone"),address:formData.get("address"),items});if(!result.success)return {success:false,message:"Please correct the fields below.",fieldErrors:result.error.flatten().fieldErrors};const verified=[];for(const item of result.data.items){const d=getDish(item.id);if(!d)return {success:false,message:"A dish is no longer available.",fieldErrors:{}};verified.push({id:d.id,name:d.name,price:d.price,quantity:item.quantity});}const order=createOrder({...result.data,items:verified,ownerId:user.id});revalidatePath("/orders");revalidatePath("/cart");return {success:true,message:`Order ${order.id} placed successfully.`,fieldErrors:{}};}
+export async function cancelOrder(id,previousState){const user=await getSessionUser();if(!user)return {message:"A session is required."};const order=findOrder(id);if(!order)return {message:"Order not found."};if(order.ownerId!==user.id)return {message:"You are not allowed to cancel this order."};removeOrder(id);revalidatePath("/orders");return {message:"Order cancelled."};}
