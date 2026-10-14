@@ -1,0 +1,1 @@
+import {NextResponse} from "next/server"; export async function POST(){const r=NextResponse.json({message:"Demo session started."});r.cookies.set("demo-user-id","demo-customer-1",{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",path:"/",maxAge:14400});return r;}
